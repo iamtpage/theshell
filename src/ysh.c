@@ -27,7 +27,7 @@ void fill_argv(char *tmp_argv)
     char *foo = tmp_argv;
     int index = 0;
     char ret[100];
-    bzero(ret, 100);
+    memset(ret, '0', sizeof(ret));
     while(*foo != '\0') 
     {
         if(index == 10)
@@ -41,12 +41,12 @@ void fill_argv(char *tmp_argv)
 			}
             else 
             {
-                bzero(my_argv[index], strlen(my_argv[index]));
+                memset(my_argv[index], '0', strlen(my_argv[index]));
             }
             
             strncpy(my_argv[index], ret, strlen(ret));
             strncat(my_argv[index], "\0", 1);
-            bzero(ret, 100);
+            memset(ret, '0', 100);
             index++;
             
         } 
@@ -119,7 +119,7 @@ void insert_path_str_to_search(char *path_str)
             strncat(search_path[index], "\0", 1);
             
             index++;
-            bzero(ret, 100);
+            memset(ret, '0', sizeof(ret));
         } 
         else 
         {
@@ -135,7 +135,7 @@ int attach_path(char *cmd)
     char ret[100];
     int index;
     int fd;
-    bzero(ret, 100);
+    memset(ret, '0', sizeof(ret));
     
     for(index=0;search_path[index]!=NULL;index++) 
     {
@@ -176,7 +176,7 @@ void free_argv()
     int index;
     for(index=0;my_argv[index]!=NULL;index++) 
     {
-        bzero(my_argv[index], strlen(my_argv[index])+1);
+        memset(my_argv[index], '0', strlen(my_argv[index])+1);
         my_argv[index] = NULL;
         free(my_argv[index]);
     }
@@ -252,10 +252,10 @@ int main(int argc, char *argv[], char *envp[])
                        
                        free_argv();
                        printf("[MY_SHELL ] ");
-                       bzero(cmd, 100);
+                       memset(cmd, '0', 100);
                    }
                    
-                   bzero(tmp, 100);
+                   memset(tmp, '0', 100);
                    break;
                    
 				 default: strncat(tmp, &c, 1);
