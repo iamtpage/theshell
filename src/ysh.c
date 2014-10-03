@@ -12,6 +12,7 @@
 
 extern int errno;
 
+//this is a test
 typedef void (*sighandler_t)(int);
 
 //arguments and environmental variables
