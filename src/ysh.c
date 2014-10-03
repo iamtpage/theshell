@@ -18,49 +18,85 @@ static char *search_path[10];
 
 void handle_signal(int signo)
 {
+	//prints out MY_SHELL
     printf("\n[MY_SHELL ] ");
+    
+    //not really necessary, but good practice
     fflush(stdout);
 }
 
 void fill_argv(char *tmp_argv)
 {
-    char *foo = tmp_argv;
+	//pointer to list of arguments
+    char *arg = tmp_argv;
+    
+    //counter
     int index = 0;
+    
     char ret[100];
+    //set ret to 0 for good measure
     memset(ret, '0', sizeof(ret));
-    while(*foo != '\0') 
-    {
+    
+    //while we don't have a string terminator
+    while(*arg != '\0') 
+    { //take the tmp_argv and examine it character by character
+        
+        //looks like we only support 10 arguments
         if(index == 10)
-            break;
-
-        if(*foo == ' ') 
         {
+            break;
+		}
+		
+		//we found a space
+        if(*arg == ' ') 
+        {
+			//if the index spot in my_argv isn't being used
             if(my_argv[index] == NULL)
             {
+				//allocate enough memory for the index to store the argument
                 my_argv[index] = (char *)malloc(sizeof(char) * strlen(ret) + 1);
 			}
             else 
             {
+				//set the index contents to a bunch of 0's
                 memset(my_argv[index], '0', strlen(my_argv[index]));
             }
             
+            //now that we have allocated enough space
+            //copy the ret to the spot in my_argv
             strncpy(my_argv[index], ret, strlen(ret));
+            
+            //add a string terminator for formatting purposes
             strncat(my_argv[index], "\0", 1);
+            
+            //set memset back to a bunch of 0's
             memset(ret, '0', 100);
+            
+            //rinse and repeat
             index++;
             
         } 
         else 
         {
-            strncat(ret, foo, 1);
+			//not a space
+			//so just copy it
+            strncat(ret, arg, 1);
         }
         
-        foo++;
-        /*printf("foo is %c\n", *foo);*/
+        //increment to the next argument
+        arg++;
+        
+        /*printf("arg is %c\n", *arg);*/
     }
     
+    //set the arg index to the size it needs to be
+    //strlen(ret) + 1
     my_argv[index] = (char *)malloc(sizeof(char) * strlen(ret) + 1);
+    
+    //copy ret to my_argv[index]
     strncpy(my_argv[index], ret, strlen(ret));
+    
+    //add a terminator at the end
     strncat(my_argv[index], "\0", 1);
 }
 
