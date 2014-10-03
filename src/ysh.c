@@ -13,7 +13,11 @@
 extern int errno;
 
 typedef void (*sighandler_t)(int);
+
+//arguments and environmental variables
 static char *my_argv[100], *my_envp[100];
+
+//path to search for programs
 static char *search_path[10];
 
 void handle_signal(int signo)
@@ -100,34 +104,51 @@ void fill_argv(char *tmp_argv)
     strncat(my_argv[index], "\0", 1);
 }
 
+//copy the environmental variables for use
 void copy_envp(char **envp)
 {
+	//counter
     int index = 0;
     
-    for(;envp[index] != NULL; index++) 
+    //increment through until envp[index] = NULL
+    for(index = 0;envp[index] != NULL; index++) 
     {
-        my_envp[index] = (char *)
-		malloc(sizeof(char) * (strlen(envp[index]) + 1));
+		//cast our array index of environmental variables to a character pointer
+		//with the proper memory allocated to hold the envp[index] + 1
+        my_envp[index] = (char *) malloc(sizeof(char) * (strlen(envp[index]) + 1));
+        
+        //copy from envp to my_envp
         memcpy(my_envp[index], envp[index], strlen(envp[index]));
     }
 }
 
+//get the $PATH variable so we know where to look
+//when we are trying to execute commands
 void get_path_string(char **tmp_envp, char *bin_path)
 {
+	//counter
     int count = 0;
     char *tmp;
     while(1) 
     {
+		//increment through the environmental variables
+		
+		//look for the $PATH one
         tmp = strstr(tmp_envp[count], "PATH");
+        
+        //keep incrementing until we find it
         if(tmp == NULL) 
         {
             count++;
         } 
+        
+        //we found it, so no need to keep looping
         else 
         {
             break;
         }
     }
+		//copy the value of the $PATH variable to bin_path
         strncpy(bin_path, tmp, strlen(tmp));
 }
 
