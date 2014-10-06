@@ -39,8 +39,9 @@ void fill_argv(char *tmp_argv)
     int index = 0;
     
     char ret[100];
+    
     //set ret to 0 for good measure
-    memset(ret, '0', sizeof(ret));
+    memset(ret, '\0', sizeof(ret));
     
     //while we don't have a string terminator
     while(*arg != '\0') 
@@ -64,7 +65,7 @@ void fill_argv(char *tmp_argv)
             else 
             {
 				//set the index contents to a bunch of 0's
-                memset(my_argv[index], '0', strlen(my_argv[index]));
+                memset(my_argv[index], '\0', strlen(my_argv[index]));
             }
             
             //now that we have allocated enough space
@@ -75,7 +76,7 @@ void fill_argv(char *tmp_argv)
             strncat(my_argv[index], "\0", 1);
             
             //set memset back to a bunch of 0's
-            memset(ret, '0', 100);
+            memset(ret, '\0', 100);
             
             //rinse and repeat
             index++;
@@ -95,7 +96,6 @@ void fill_argv(char *tmp_argv)
     }
     
     //set the arg index to the size it needs to be
-    //strlen(ret) + 1
     my_argv[index] = (char *)malloc(sizeof(char) * strlen(ret) + 1);
     
     //copy ret to my_argv[index]
@@ -155,22 +155,33 @@ void get_path_string(char **tmp_envp, char *bin_path)
 
 void insert_path_str_to_search(char *path_str) 
 {
+    //counter
     int index=0;
+    
+    //temporary pointer so we don't overwrite *path_str
     char *tmp = path_str;
+    
+    //array
     char ret[100];
 
+	//as long as *tmp isn't =, increment
     while(*tmp != '=')
     {    
         tmp++;
     }
     
+    //increment again?
     tmp++;
 
+	//while the character isn't a string terminator
     while(*tmp != '\0') 
     {
+		//if the character is a :
         if(*tmp == ':') 
         {
+			//add a / to the spot in the ret array
             strncat(ret, "/", 1);
+            
             search_path[index] = 
 			(char *) malloc(sizeof(char) * (strlen(ret) + 1));
             strncat(search_path[index], ret, strlen(ret));
@@ -234,7 +245,7 @@ void free_argv()
     int index;
     for(index=0;my_argv[index]!=NULL;index++) 
     {
-        memset(my_argv[index], '0', strlen(my_argv[index])+1);
+        memset(my_argv[index], '0', strlen(my_argv[index]));
         my_argv[index] = NULL;
         free(my_argv[index]);
     }
