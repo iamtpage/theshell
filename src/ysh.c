@@ -165,14 +165,15 @@ void insert_path_str_to_search(char *path_str)
     //array
     char ret[100];
 
-	//as long as *tmp isn't =, increment
+	//set tmp to just past the = of PATH=/usr/bin
     while(*tmp != '=')
     {    
         tmp++;
     }
     
-    //increment again?
+    //increment again, because tmp is at the =, we want to be after it
     tmp++;
+
 
 	//while the character isn't a string terminator
     while(*tmp != '\0') 
@@ -182,44 +183,73 @@ void insert_path_str_to_search(char *path_str)
 		//usr/bin:/usr/sbin etc
         if(*tmp == ':') 
         {
-			//add a / to the spot in the ret array
+			//add a / to the spot in ret
             strncat(ret, "/", 1);
             
-            search_path[index] = 
-			(char *) malloc(sizeof(char) * (strlen(ret) + 1));
+            //set the proper size for the path
+            search_path[index] = (char *) malloc(sizeof(char) * (strlen(ret) + 1));
+            
+            //copy it
             strncat(search_path[index], ret, strlen(ret));
+            
+            //terminate the string
             strncat(search_path[index], "\0", 1);
             
+            //increment
             index++;
+            
+            //reset ret back to terminators
             memset(ret, '\0', 100);
         } 
         else 
         {
+			//copy it
             strncat(ret, tmp, 1);
         }
-        
+        //increment again to get to the next one
         tmp++;
     }
 }
-
+//takes the command typed (echo) and adds it file path
+//so 'echo' becomes '/usr/bin/echo'
 int attach_path(char *cmd)
 {
+	//ret again
     char ret[100];
+    
+    //counter
     int index;
     int fd;
+    
+    //set ret to \0's
     memset(ret, '\0', 100);
     
+    //search all the search paths for the command given
     for(index = 0; search_path[index] != NULL; index++) 
     {
+		//takes ret and adds the first search path entry to it
+		//e.g /usr/bin
         strcpy(ret, search_path[index]);
+        
+        //appends the command given to the search path
+        //e.g /usr/bin now becomes /usr/bin/echo
         strncat(ret, cmd, strlen(cmd));
+        
+        //check to see if /usr/bin/echo is a valid file
+        //by trying to open the file in a read-only mode
         if((fd = open(ret, O_RDONLY)) > 0) 
         {
+			//if it is, copy it to cmd
             strncpy(cmd, ret, strlen(ret));
+            
+            //don't leave the file open
             close(fd);
             return 0;
         }
+        //else the file doesn't exist, which means it isn't a valid
+        //command
     }
+    //since we are just copying it to cmd, we don't need to return anything
     return 0;
 }
 
@@ -243,13 +273,20 @@ void call_execve(char *cmd)
     }
 }
 
+
+//frees memory allocated so memory leaks don't happen
 void free_argv()
 {
+	//counter
     int index;
+    
+    //increment through my_argv array and set it to \0, then NULL
     for(index = 0; my_argv[index] != NULL; index++) 
     {
         memset(my_argv[index], '\0', strlen(my_argv[index]) + 1);
         my_argv[index] = NULL;
+        
+        //release it into memory now that it is clean
         free(my_argv[index]);
     }
 }
@@ -265,79 +302,120 @@ int main(int argc, char *argv[], char *envp[])
     signal(SIGINT, SIG_IGN);
     signal(SIGINT, handle_signal);
 
+	//copy environmental variables given envp[]
     copy_envp(envp);
 
-    get_path_string(my_envp, path_str);   
+	//get the $PATH variable
+    get_path_string(my_envp, path_str);
+    
+    //format the $PATH variable so we can use it
+    //to search for commands   
     insert_path_str_to_search(path_str);
 
+    //if we aren't a child
     if(fork() == 0) 
     {
-        //execve("/usr/bin/clear", argv, my_envp);
+        execve("/usr/bin/clear", argv, my_envp);
         exit(1);
     } 
+    
+    //we are a child
     else 
     {
+		//wait
         wait(NULL);
     }
     
+    //print out the prompt
     printf("[MY_SHELL ] ");
     fflush(stdout);
 
+	//c is where we store the input
     while(c != EOF) 
     {
+		//get the input and send it through the switch case
         c = getchar();
         switch(c) 
         {
-            case '\n': if(tmp[0] == '\0') 
+			//new line
+            case '\n': if(tmp[0] == '\0') //if its the very beginning
 						{
+							//print the prompt
 							printf("[MY_SHELL ] ");
 						}
         
 						else 
 						{
+							//fill the array with stuff from tmp
 							fill_argv(tmp);
+							
+							//copy the command from my_argv to cmd
 							strncpy(cmd, my_argv[0], strlen(my_argv[0]));
+							
+							//add a terminator
 							strncat(cmd, "\0", 1);
+							
+							//if we specify a relative path vs an absolute
+							//e.g echo vs /usr/bin/echo
 							if(index(cmd, '/') == NULL) 
 							{
+								//attach the full file path to the cmd
 								if(attach_path(cmd) == 0)
 								{
+									//then execute it if it returns sucessfully
 									call_execve(cmd);
 								}
                             
 								else 
 								{
+									//else we can't find it
 									printf("%s: command not found\n", cmd);
 								}
 							} 
                        
+							//else check the current directory for the command
 							else 
 							{
+								//if we found it in the directory
 								if((fd = open(cmd, O_RDONLY)) > 0) 
 								{
+									//close the file we opened
 									close(fd);
+									
+									//execute the file
 									call_execve(cmd);
 								} 
                            
+								//else it isn't in the current directory either
 								else 
 								{
+									//not found
 									printf("%s: command not found\n", cmd);
 								}
 							}
-                       
+							
+							//free up the memory
 							free_argv();
+							
+							//print prompt
 							printf("[MY_SHELL ] ");
+							
+							//set the cmd to nulls for the next command
 							memset(cmd, '\0', 100);
 						}
                    
+						//set tmp to null so we don't have leftovers
 						memset(tmp, '\0', 100);
+						
+						//break
 						break;
                    
-			default: strncat(tmp, &c, 1);
+			default: strncat(tmp, &c, 1); //no return, so keep grabbing the characters
 					 break;
         }
     }
     
+    //free  all the memory
     free(tmp);
     free(path_str);
     
