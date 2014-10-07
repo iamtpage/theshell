@@ -112,7 +112,7 @@ void copy_envp(char **envp)
     int index = 0;
     
     //increment through until envp[index] = NULL
-    for(index = 0;envp[index] != NULL; index++) 
+    for(index = 0; envp[index] != NULL; index++) 
     {
 		//cast our array index of environmental variables to a character pointer
 		//with the proper memory allocated to hold the envp[index] + 1
@@ -151,7 +151,7 @@ void get_path_string(char **tmp_envp, char *bin_path)
     }
 		//copy the value of the $PATH variable to bin_path
         strncpy(bin_path, tmp, strlen(tmp));
-}
+}	
 
 void insert_path_str_to_search(char *path_str) 
 {
@@ -177,6 +177,8 @@ void insert_path_str_to_search(char *path_str)
     while(*tmp != '\0') 
     {
 		//if the character is a :
+		//the $PATH variable separates entries by a :
+		//usr/bin:/usr/sbin etc
         if(*tmp == ':') 
         {
 			//add a / to the spot in the ret array
@@ -188,7 +190,7 @@ void insert_path_str_to_search(char *path_str)
             strncat(search_path[index], "\0", 1);
             
             index++;
-            memset(ret, '0', sizeof(ret));
+            memset(ret, '\0', 100);
         } 
         else 
         {
@@ -204,9 +206,9 @@ int attach_path(char *cmd)
     char ret[100];
     int index;
     int fd;
-    memset(ret, '0', sizeof(ret));
+    memset(ret, '\0', 100);
     
-    for(index=0;search_path[index]!=NULL;index++) 
+    for(index = 0; search_path[index] != NULL; index++) 
     {
         strcpy(ret, search_path[index]);
         strncat(ret, cmd, strlen(cmd));
@@ -243,9 +245,9 @@ void call_execve(char *cmd)
 void free_argv()
 {
     int index;
-    for(index=0;my_argv[index]!=NULL;index++) 
+    for(index = 0; my_argv[index] != NULL; index++) 
     {
-        memset(my_argv[index], '0', strlen(my_argv[index]));
+        memset(my_argv[index], '\0', strlen(my_argv[index]) + 1);
         my_argv[index] = NULL;
         free(my_argv[index]);
     }
@@ -285,62 +287,65 @@ int main(int argc, char *argv[], char *envp[])
         c = getchar();
         switch(c) 
         {
-            case '\n': if(tmp[0] == '\0') {
-                       printf("[MY_SHELL ] ");
-        } 
-        else 
-        {
-                       fill_argv(tmp);
-                       strncpy(cmd, my_argv[0], strlen(my_argv[0]));
-                       strncat(cmd, "\0", 1);
-                       if(index(cmd, '/') == NULL) 
-                       {
-                           if(attach_path(cmd) == 0) 
-                           {
-                               call_execve(cmd);
-                           } 
-                           else 
-                           {
-                               printf("%s: command not found\n", cmd);
-                           }
-                       } 
+            case '\n': if(tmp[0] == '\0') 
+						{
+							printf("[MY_SHELL ] ");
+						}
+        
+						else 
+						{
+							fill_argv(tmp);
+							strncpy(cmd, my_argv[0], strlen(my_argv[0]));
+							strncat(cmd, "\0", 1);
+							if(index(cmd, '/') == NULL) 
+							{
+								if(attach_path(cmd) == 0)
+								{
+									call_execve(cmd);
+								}
+                            
+								else 
+								{
+									printf("%s: command not found\n", cmd);
+								}
+							} 
                        
-                       else 
-                       {
-                           if((fd = open(cmd, O_RDONLY)) > 0) 
-                           {
-                               close(fd);
-                               call_execve(cmd);
-                           } 
+							else 
+							{
+								if((fd = open(cmd, O_RDONLY)) > 0) 
+								{
+									close(fd);
+									call_execve(cmd);
+								} 
                            
-                           else 
-                           {
-                               printf("%s: command not found\n", cmd);
-                           }
-                       }
+								else 
+								{
+									printf("%s: command not found\n", cmd);
+								}
+							}
                        
-                       free_argv();
-                       printf("[MY_SHELL ] ");
-                       memset(cmd, '0', 100);
-                   }
+							free_argv();
+							printf("[MY_SHELL ] ");
+							memset(cmd, '\0', 100);
+						}
                    
-                   memset(tmp, '0', 100);
-                   break;
+						memset(tmp, '\0', 100);
+						break;
                    
-				 default: strncat(tmp, &c, 1);
-                 break;
+			default: strncat(tmp, &c, 1);
+					 break;
         }
     }
     
     free(tmp);
     free(path_str);
     
-    for(i=0;my_envp[i]!=NULL;i++)
+    for(i = 0; my_envp[i] != NULL; i++)
     {
         free(my_envp[i]);
     }
     
-    for(i=0;i<10;i++)
+    for(i = 0; i < 10; i++)
     {
         free(search_path[i]);
     }
