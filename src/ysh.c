@@ -138,7 +138,7 @@ void get_path_string(char **tmp_envp, char *bin_path)
         tmp = strstr(tmp_envp[count], "PATH");
         
         //keep incrementing until we find it
-        if(tmp == NULL) 
+        if(tmp == NULL || strstr(tmp_envp[count], "MOZ") != NULL) 
         {
             count++;
         } 
@@ -146,11 +146,12 @@ void get_path_string(char **tmp_envp, char *bin_path)
         //we found it, so no need to keep looping
         else 
         {
-            break;
+				break;
         }
     }
 		//copy the value of the $PATH variable to bin_path
         strncpy(bin_path, tmp, strlen(tmp));
+        printf("\n%s\n", bin_path);
 }	
 
 void insert_path_str_to_search(char *path_str) 
@@ -271,7 +272,7 @@ int main(int argc, char *argv[], char *envp[])
 
     if(fork() == 0) 
     {
-        execve("/usr/bin/clear", argv, my_envp);
+        //execve("/usr/bin/clear", argv, my_envp);
         exit(1);
     } 
     else 
