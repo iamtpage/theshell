@@ -73,7 +73,7 @@ void fill_argv(char *tmp_argv)
             strncpy(my_argv[index], ret, strlen(ret));
             
             //add a string terminator for formatting purposes
-            strncat(my_argv[index], "\0", 1);
+            //strncat(my_argv[index], "\0", 1);
             
             //set memset back to a bunch of 0's
             memset(ret, '\0', 100);
@@ -92,7 +92,7 @@ void fill_argv(char *tmp_argv)
         //increment to the next argument
         arg++;
         
-        /*printf("arg is %c\n", *arg);*/
+        //printf("arg is %c\n", *arg);
     }
     
     //set the arg index to the size it needs to be
@@ -116,8 +116,9 @@ void copy_envp(char **envp)
     {
 		//cast our array index of environmental variables to a character pointer
 		//with the proper memory allocated to hold the envp[index] + 1
-        my_envp[index] = (char *) malloc(sizeof(char) * (strlen(envp[index]) + 1));
+        my_envp[index] = (char *) malloc(sizeof(char) * (strlen(envp[index]) + 2));
         
+        strcat(my_envp[index], "$");
         //copy from envp to my_envp
         memcpy(my_envp[index], envp[index], strlen(envp[index]));
     }
@@ -151,7 +152,6 @@ void get_path_string(char **tmp_envp, char *bin_path)
     }
 		//copy the value of the $PATH variable to bin_path
         strncpy(bin_path, tmp, strlen(tmp));
-        printf("\n%s\n", bin_path);
 }	
 
 void insert_path_str_to_search(char *path_str) 
@@ -184,6 +184,7 @@ void insert_path_str_to_search(char *path_str)
         if(*tmp == ':') 
         {
 			//add a / to the spot in ret
+			//to make it /bin/foo instead of bin/foo
             strncat(ret, "/", 1);
             
             //set the proper size for the path
@@ -253,22 +254,58 @@ int attach_path(char *cmd)
     return 0;
 }
 
+//actually execute the program
 void call_execve(char *cmd)
 {
-    int i;
+    int i; //return value for execve
+    int counter = 0;
+    int subcounter = 0;
+    char *tmp;
+    
+    //print the command for debug
     printf("cmd is %s\n", cmd);
+    
+    while(my_argv[counter] != NULL)
+    {
+		if(strchr(my_argv[counter], '$') != NULL)
+		{
+			printf("Environmental Variable is: %s\n",my_argv[counter]);
+	
+			tmp = my_argv[counter];
+			
+			while(my_envp[subcounter] != NULL)
+			{
+				if(strspn(my_envp[subcounter],tmp) > 3)
+				{
+					printf("Found System Variable: %s\n", my_envp[subcounter]);
+					
+				}
+				subcounter++;
+			}
+		}
+		counter++;
+	}
+    
+    //if we aren't a child
     if(fork() == 0) 
     {
+		//try to execute the command
         i = execve(cmd, my_argv, my_envp);
+        
+        //print the error code
         printf("errno is %d\n", errno);
+        
+        //if the execve didn't execute properly
         if(i < 0) 
         {
+			//command not found
             printf("%s: %s\n", cmd, "command not found");
             exit(1);        
         }
     } 
     else 
     {
+		//we are a child, so wait
         wait(NULL);
     }
 }
@@ -315,7 +352,7 @@ int main(int argc, char *argv[], char *envp[])
     //if we aren't a child
     if(fork() == 0) 
     {
-        execve("/usr/bin/clear", argv, my_envp);
+        //execve("/usr/bin/clear", argv, my_envp);
         exit(1);
     } 
     
