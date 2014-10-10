@@ -260,7 +260,6 @@ void call_execve(char *cmd)
     int i; //return value for execve
     int counter = 0;
     int subcounter = 0;
-    char *tmp;
     
     //print the command for debug
     printf("cmd is %s\n", cmd);
@@ -269,16 +268,29 @@ void call_execve(char *cmd)
     {
 		if(strchr(my_argv[counter], '$') != NULL)
 		{
+			char *tmp;
+			char *buffer;
+			
 			printf("Environmental Variable is: %s\n",my_argv[counter]);
 	
-			tmp = my_argv[counter];
+			tmp = strtok(my_argv[counter], "$");
+			tmp = strcat(tmp, "=");
+			printf("tmp is %s\n", tmp);
+			
 			
 			while(my_envp[subcounter] != NULL)
 			{
-				if(strspn(my_envp[subcounter],tmp) > 3)
+				if(strcmp(my_envp[subcounter],tmp) == 0)
 				{
 					printf("Found System Variable: %s\n", my_envp[subcounter]);
 					
+					buffer = strtok(my_envp[subcounter], "=");
+					buffer = strtok(NULL, my_envp[subcounter]);
+					printf("buffer is: %s\n", buffer);
+					my_argv[counter] = buffer;
+					counter = 0;
+					subcounter = 0;
+					break;
 				}
 				subcounter++;
 			}
