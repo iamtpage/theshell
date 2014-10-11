@@ -258,44 +258,59 @@ int attach_path(char *cmd)
 void call_execve(char *cmd)
 {
     int i; //return value for execve
-    int counter = 0;
-    int subcounter = 0;
+    
+    int counter;
+    int subcounter;
+    int test;
     
     //print the command for debug
     printf("cmd is %s\n", cmd);
     
-    while(my_argv[counter] != NULL)
+    //increment through the arguments provided by a user
+    for(counter = 0; my_argv[counter] != NULL; counter++)
     {
+		//search for any environmental variables prefixed by a $ ($PATH, $USER, etc)
 		if(strchr(my_argv[counter], '$') != NULL)
 		{
+			//we found one, so lets dissect it
 			char *tmp;
 			char *buffer;
-			
-			printf("Environmental Variable is: %s\n",my_argv[counter]);
 	
+			//tokenize it, and get rid of the $ and =, which leaves us with the name
+			//of the variable.  e.g it goes from "$TERM" to just "TERM="
 			tmp = strtok(my_argv[counter], "$");
 			tmp = strcat(tmp, "=");
-			printf("tmp is %s\n", tmp);
 			
-			
-			while(my_envp[subcounter] != NULL)
+			//search the array of environmental variables for something that matched TERM=
+			for(subcounter = 0; my_envp[subcounter] != NULL; subcounter++)
 			{
-				if(strcmp(my_envp[subcounter],tmp) == 0)
-				{
-					printf("Found System Variable: %s\n", my_envp[subcounter]);
-					
+			
+				//if we found one and the sizes of the string sort of match
+				//(the strcmp() check prevents stuff like PATH= being evaluated as MOZ_PLUGINS_PATH=)
+				if(strstr(my_envp[subcounter], tmp) != NULL && strcmp(my_envp[subcounter], tmp) > 0)
+				{	
+					//get rid of the variable name and the =
 					buffer = strtok(my_envp[subcounter], "=");
 					buffer = strtok(NULL, my_envp[subcounter]);
-					printf("buffer is: %s\n", buffer);
+					
+					//buffer is now just the evaluated value of the variable
 					my_argv[counter] = buffer;
-					counter = 0;
+					
+					//set this shit to 0 because fuck nested for loops
 					subcounter = 0;
+					counter = 0;
+					
+					//reassign the environmental variable array index to its original value
+					//somewhere along the lines I ended up setting it to overwrite it
+					//which fucks up my search, so I just added this hack to fix it
+					my_envp[subcounter] = strcat(tmp, buffer);
+					
+					//all done, so lets move on to the next possible environmental variable in
+					//the argument array
 					break;
 				}
-				subcounter++;
 			}
 		}
-		counter++;
 	}
     
     //if we aren't a child
