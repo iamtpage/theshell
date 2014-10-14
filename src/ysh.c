@@ -261,7 +261,9 @@ void call_execve(char *cmd)
     
     int counter;
     int subcounter;
-    int test;
+    int flag = 0;
+    int badvar = -1;
+    char badbuffer[128];
     
     //print the command for debug
     printf("cmd is %s\n", cmd);
@@ -275,10 +277,15 @@ void call_execve(char *cmd)
 			//we found one, so lets dissect it
 			char *tmp;
 			char *buffer;
-	
+			
+			badvar = counter;
+			
+			strcat(badbuffer, "$");
+			
 			//tokenize it, and get rid of the $ and =, which leaves us with the name
 			//of the variable.  e.g it goes from "$TERM" to just "TERM="
 			tmp = strtok(my_argv[counter], "$");
+			strcat(badbuffer, tmp);
 			tmp = strcat(tmp, "=");
 			
 			//search the array of environmental variables for something that matched TERM=
@@ -305,6 +312,9 @@ void call_execve(char *cmd)
 					//which fucks up my search, so I just added this hack to fix it
 					my_envp[subcounter] = strcat(tmp, buffer);
 					
+					//valid variable, so set the flag
+					flag = 1;
+					
 					//all done, so lets move on to the next possible environmental variable in
 					//the argument array
 					break;
@@ -313,8 +323,15 @@ void call_execve(char *cmd)
 		}
 	}
     
+    //this is to see if the system variable used
+    //is an actual variable that we can evaluate
+    if(flag == 0 && badvar != -1)
+    {	
+		printf("Not a valid system variable: %s\n\n", badbuffer);
+	}
+    
     //if we aren't a child
-    if(fork() == 0) 
+    if(fork() == 0 && badvar == -1) 
     {
 		//try to execute the command
         i = execve(cmd, my_argv, my_envp);
