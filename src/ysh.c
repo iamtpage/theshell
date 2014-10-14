@@ -264,6 +264,10 @@ void call_execve(char *cmd)
     int flag = 0;
     int badvar = -1;
     char badbuffer[128];
+    char scriptcmd[256];
+    int script = 0;
+    
+	memset(scriptcmd, '\0', 256);
     
     //print the command for debug
     printf("cmd is %s\n", cmd);
@@ -328,16 +332,45 @@ void call_execve(char *cmd)
 		//check for the >, and make sure it isn't the first or last argument
 		if(strchr(my_argv[counter], '>') != NULL
 		 && my_argv[counter - 1] != NULL 
-		 && my_argv[counter + 1] != NULL)
+		 && my_argv[counter + 1] != NULL
+		 && my_argv[counter + 2] == NULL)
 		{
 			//handle putting output from command my_argv[counter-1]
 			//to file named in my_argv[counter+1]
+			int d;
+			char scriptarg[256];
+			char *filename;
+			
+			memset(scriptarg, '\0', 256);
+			
+			
+			for(d = 0; d < counter; d++)
+			{
+				//printf("%s\n", my_argv[d]);
+				strcat(scriptarg, my_argv[d]);
+				strcat(scriptarg, " ");
+			}
+				strcat(scriptarg, "\0");
+				printf("strbuffer: %s\n", scriptarg);
+				filename = my_argv[counter+1];
+				printf("filename: %s\n", filename);
+				
+				script = 1;
+				strcat(scriptcmd, "/usr/bin/script -q -c \"");
+				strcat(scriptcmd, scriptarg);
+				strcat(scriptcmd, "\" ");
+				strcat(scriptcmd, filename);
+				strcat(scriptcmd, "\0");
+				
+				printf("scriptcmd: %s\n", scriptcmd);
+			
 		}
 		
 		//check for <, and make sure it isn't the first or last argument
 		if(strchr(my_argv[counter], '<') != NULL
 		 && my_argv[counter - 1] != NULL 
-		 && my_argv[counter + 1] != NULL)
+		 && my_argv[counter + 1] != NULL
+		 && my_argv[counter + 2] == NULL)
 		{
 			//handle putting input from my_argv[counter-1]
 			//to file names in my_argv[counter+1]
@@ -372,7 +405,13 @@ void call_execve(char *cmd)
     if(fork() == 0 && badvar == -1) 
     {
 		//try to execute the command
-        i = execve(cmd, my_argv, my_envp);
+		if(script == 1)
+		{
+			cmd = scriptcmd;
+	
+		}
+			i = execve(cmd, my_argv, my_envp);
+			script = 0;
         
         //print the error code
         printf("errno is %d\n", errno);
@@ -431,14 +470,14 @@ int main(int argc, char *argv[], char *envp[])
     //to search for commands   
     insert_path_str_to_search(path_str);
 
-    //if we aren't a child
+    //if we are a child
     if(fork() == 0) 
     {
         //execve("/usr/bin/clear", argv, my_envp);
         exit(1);
     } 
     
-    //we are a child
+    //we aren't a child
     else 
     {
 		//wait
