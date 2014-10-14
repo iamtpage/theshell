@@ -321,6 +321,44 @@ void call_execve(char *cmd)
 				}
 			}
 		}
+	
+		
+		//for help with <,>,| operations, look up pipe() and dup2()
+		
+		//check for the >, and make sure it isn't the first or last argument
+		if(strchr(my_argv[counter], '>') != NULL
+		 && my_argv[counter - 1] != NULL 
+		 && my_argv[counter + 1] != NULL)
+		{
+			//handle putting output from command my_argv[counter-1]
+			//to file named in my_argv[counter+1]
+		}
+		
+		//check for <, and make sure it isn't the first or last argument
+		if(strchr(my_argv[counter], '<') != NULL
+		 && my_argv[counter - 1] != NULL 
+		 && my_argv[counter + 1] != NULL)
+		{
+			//handle putting input from my_argv[counter-1]
+			//to file names in my_argv[counter+1]
+		}
+		
+		//check for |, and make sure it isn't the first or last argument
+		if(strchr(my_argv[counter], '|') != NULL
+		 && my_argv[counter - 1] != NULL 
+		 && my_argv[counter + 1] != NULL)
+		{
+			//handle piping output from my_argv[counter-1]
+			//to my_argv[counter+1]
+		}
+		
+		//check for &, so we can handle background jobs
+		if(strchr(my_argv[counter], '&') != NULL
+		 && my_argv[counter - 1] != NULL
+		 && my_argv[counter + 1] == NULL)
+		 {
+			 //handle background jobs
+		 }
 	}
     
     //this is to see if the system variable used
@@ -330,7 +368,7 @@ void call_execve(char *cmd)
 		printf("Not a valid system variable: %s\n\n", badbuffer);
 	}
     
-    //if we aren't a child
+    //if we are a child
     if(fork() == 0 && badvar == -1) 
     {
 		//try to execute the command
@@ -349,7 +387,7 @@ void call_execve(char *cmd)
     } 
     else 
     {
-		//we are a child, so wait
+		//we aren't a child, so wait until child is done
         wait(NULL);
     }
 }
