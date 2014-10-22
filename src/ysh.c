@@ -258,16 +258,22 @@ int attach_path(char *cmd)
 void call_execve(char *cmd)
 {
     int i; //return value for execve
-    
+    int x;
+    int redirected = 0;
     int counter;
     int subcounter;
     int flag = 0;
     int badvar = -1;
-    char badbuffer[128];
-    char scriptcmd[256];
-    int script = 0;
     
-	memset(scriptcmd, '\0', 256);
+    char badbuffer[128];
+	char cmdstr[256];
+	char cmdoutput[512];
+	
+	FILE *fp;
+	FILE *filename;
+			
+	memset(cmdstr, '\0', 256);
+	memset(cmdoutput, '\0', 512);
     
     //print the command for debug
     printf("cmd is %s\n", cmd);
@@ -278,6 +284,7 @@ void call_execve(char *cmd)
 		//search for any environmental variables prefixed by a $ ($PATH, $USER, etc)
 		if(strchr(my_argv[counter], '$') != NULL)
 		{
+			
 			//we found one, so lets dissect it
 			char *tmp;
 			char *buffer;
@@ -291,6 +298,7 @@ void call_execve(char *cmd)
 			tmp = strtok(my_argv[counter], "$");
 			strcat(badbuffer, tmp);
 			tmp = strcat(tmp, "=");
+			
 			
 			//search the array of environmental variables for something that matched TERM=
 			for(subcounter = 0; my_envp[subcounter] != NULL; subcounter++)
@@ -325,9 +333,6 @@ void call_execve(char *cmd)
 				}
 			}
 		}
-	
-		
-		//for help with <,>,| operations, look up pipe() and dup2()
 		
 		//check for the >, and make sure it isn't the first or last argument
 		if(strchr(my_argv[counter], '>') != NULL
@@ -335,35 +340,31 @@ void call_execve(char *cmd)
 		 && my_argv[counter + 1] != NULL
 		 && my_argv[counter + 2] == NULL)
 		{
+
 			//handle putting output from command my_argv[counter-1]
 			//to file named in my_argv[counter+1]
-			int d;
-			char scriptarg[256];
-			char *filename;
-			
-			memset(scriptarg, '\0', 256);
-			
-			
-			for(d = 0; d < counter; d++)
+			for(x=0; x < counter; x++)
 			{
-				//printf("%s\n", my_argv[d]);
-				strcat(scriptarg, my_argv[d]);
-				strcat(scriptarg, " ");
+				strcat(cmdstr, my_argv[x]);
+				if(my_argv[x+1] != NULL)
+				{
+					strcat(cmdstr, " ");
+				}
 			}
-				strcat(scriptarg, "\0");
-				printf("strbuffer: %s\n", scriptarg);
-				filename = my_argv[counter+1];
-				printf("filename: %s\n", filename);
-				
-				script = 1;
-				strcat(scriptcmd, "/usr/bin/script -q -c \"");
-				strcat(scriptcmd, scriptarg);
-				strcat(scriptcmd, "\" ");
-				strcat(scriptcmd, filename);
-				strcat(scriptcmd, "\0");
-				
-				printf("scriptcmd: %s\n", scriptcmd);
 			
+			printf("cmdstr is: %s\n", cmdstr);
+			
+			fp = popen(cmdstr, "r");
+			filename = fopen(my_argv[counter+1], "a");
+			
+			while(fgets(cmdoutput, sizeof(cmdoutput), fp) != NULL)
+			{
+				fprintf(filename, "%s", cmdoutput);
+			}
+			
+			pclose(fp);
+			fclose(filename);
+			redirected = 1;
 		}
 		
 		//check for <, and make sure it isn't the first or last argument
@@ -404,15 +405,10 @@ void call_execve(char *cmd)
     //if we are a child
     if(fork() == 0 && badvar == -1) 
     {
-		//try to execute the command
-		if(script == 1)
-		{
-			cmd = scriptcmd;
-	
-		}
-			i = execve(cmd, my_argv, my_envp);
-			script = 0;
-        
+		
+		//execute it
+		i = execve(cmd, my_argv, my_envp);
+		        
         //print the error code
         printf("errno is %d\n", errno);
         
@@ -429,6 +425,8 @@ void call_execve(char *cmd)
 		//we aren't a child, so wait until child is done
         wait(NULL);
     }
+    
+    //redirected = 0;
 }
 
 
@@ -515,7 +513,7 @@ int main(int argc, char *argv[], char *envp[])
 							
 							//if we specify a relative path vs an absolute
 							//e.g echo vs /usr/bin/echo
-							if(index(cmd, '/') == NULL) 
+							if(strchr(cmd, '/') == NULL) 
 							{
 								//attach the full file path to the cmd
 								if(attach_path(cmd) == 0)
