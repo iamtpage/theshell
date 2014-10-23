@@ -258,22 +258,10 @@ int attach_path(char *cmd)
 void call_execve(char *cmd)
 {
     int i; //return value for execve
-    int x;
-    int redirected = 0;
+    
     int counter;
     int subcounter;
-    int flag = 0;
-    int badvar = -1;
-    
-    char badbuffer[128];
-	char cmdstr[256];
-	char cmdoutput[512];
-	
-	FILE *fp;
-	FILE *filename;
-			
-	memset(cmdstr, '\0', 256);
-	memset(cmdoutput, '\0', 512);
+    int test;
     
     //print the command for debug
     printf("cmd is %s\n", cmd);
@@ -284,21 +272,14 @@ void call_execve(char *cmd)
 		//search for any environmental variables prefixed by a $ ($PATH, $USER, etc)
 		if(strchr(my_argv[counter], '$') != NULL)
 		{
-			
 			//we found one, so lets dissect it
 			char *tmp;
 			char *buffer;
-			
-			badvar = counter;
-			
-			strcat(badbuffer, "$");
-			
+	
 			//tokenize it, and get rid of the $ and =, which leaves us with the name
 			//of the variable.  e.g it goes from "$TERM" to just "TERM="
 			tmp = strtok(my_argv[counter], "$");
-			strcat(badbuffer, tmp);
 			tmp = strcat(tmp, "=");
-			
 			
 			//search the array of environmental variables for something that matched TERM=
 			for(subcounter = 0; my_envp[subcounter] != NULL; subcounter++)
@@ -324,91 +305,20 @@ void call_execve(char *cmd)
 					//which fucks up my search, so I just added this hack to fix it
 					my_envp[subcounter] = strcat(tmp, buffer);
 					
-					//valid variable, so set the flag
-					flag = 1;
-					
 					//all done, so lets move on to the next possible environmental variable in
 					//the argument array
 					break;
 				}
 			}
 		}
-		
-		//check for the >, and make sure it isn't the first or last argument
-		if(strchr(my_argv[counter], '>') != NULL
-		 && my_argv[counter - 1] != NULL 
-		 && my_argv[counter + 1] != NULL
-		 && my_argv[counter + 2] == NULL)
-		{
-
-			//handle putting output from command my_argv[counter-1]
-			//to file named in my_argv[counter+1]
-			for(x=0; x < counter; x++)
-			{
-				strcat(cmdstr, my_argv[x]);
-				if(my_argv[x+1] != NULL)
-				{
-					strcat(cmdstr, " ");
-				}
-			}
-			
-			printf("cmdstr is: %s\n", cmdstr);
-			
-			fp = popen(cmdstr, "r");
-			filename = fopen(my_argv[counter+1], "a");
-			
-			while(fgets(cmdoutput, sizeof(cmdoutput), fp) != NULL)
-			{
-				fprintf(filename, "%s", cmdoutput);
-			}
-			
-			pclose(fp);
-			fclose(filename);
-			redirected = 1;
-		}
-		
-		//check for <, and make sure it isn't the first or last argument
-		if(strchr(my_argv[counter], '<') != NULL
-		 && my_argv[counter - 1] != NULL 
-		 && my_argv[counter + 1] != NULL
-		 && my_argv[counter + 2] == NULL)
-		{
-			//handle putting input from my_argv[counter-1]
-			//to file names in my_argv[counter+1]
-		}
-		
-		//check for |, and make sure it isn't the first or last argument
-		if(strchr(my_argv[counter], '|') != NULL
-		 && my_argv[counter - 1] != NULL 
-		 && my_argv[counter + 1] != NULL)
-		{
-			//handle piping output from my_argv[counter-1]
-			//to my_argv[counter+1]
-		}
-		
-		//check for &, so we can handle background jobs
-		if(strchr(my_argv[counter], '&') != NULL
-		 && my_argv[counter - 1] != NULL
-		 && my_argv[counter + 1] == NULL)
-		 {
-			 //handle background jobs
-		 }
 	}
     
-    //this is to see if the system variable used
-    //is an actual variable that we can evaluate
-    if(flag == 0 && badvar != -1)
-    {	
-		printf("Not a valid system variable: %s\n\n", badbuffer);
-	}
-    
-    //if we are a child
-    if(fork() == 0 && badvar == -1) 
+    //if we aren't a child
+    if(fork() == 0) 
     {
-		
-		//execute it
-		i = execve(cmd, my_argv, my_envp);
-		        
+		//try to execute the command
+        i = execve(cmd, my_argv, my_envp);
+        
         //print the error code
         printf("errno is %d\n", errno);
         
@@ -422,11 +332,9 @@ void call_execve(char *cmd)
     } 
     else 
     {
-		//we aren't a child, so wait until child is done
+		//we are a child, so wait
         wait(NULL);
     }
-    
-    //redirected = 0;
 }
 
 
@@ -468,14 +376,14 @@ int main(int argc, char *argv[], char *envp[])
     //to search for commands   
     insert_path_str_to_search(path_str);
 
-    //if we are a child
+    //if we aren't a child
     if(fork() == 0) 
     {
         //execve("/usr/bin/clear", argv, my_envp);
         exit(1);
     } 
     
-    //we aren't a child
+    //we are a child
     else 
     {
 		//wait
@@ -513,7 +421,7 @@ int main(int argc, char *argv[], char *envp[])
 							
 							//if we specify a relative path vs an absolute
 							//e.g echo vs /usr/bin/echo
-							if(strchr(cmd, '/') == NULL) 
+							if(index(cmd, '/') == NULL) 
 							{
 								//attach the full file path to the cmd
 								if(attach_path(cmd) == 0)
