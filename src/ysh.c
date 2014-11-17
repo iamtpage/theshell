@@ -21,6 +21,9 @@ static char *my_argv[100], *my_envp[100];
 //path to search for programs
 static char *search_path[10];
 
+FILE *loadfile;
+long double start[4], current[4], avg;
+
 void dosuperbash(char *path);
 
 void handle_signal(int signo)
@@ -262,7 +265,7 @@ void call_execve(char *cmd)
     int i; //return value for execve
     int counter;
     int subcounter;
-    int superbash = 0; //superbash flag
+    int noexecute = 0; //noexecute flag
         
     char *tmp;
 	char *buffer;
@@ -322,7 +325,26 @@ void call_execve(char *cmd)
 		if(strstr(my_argv[0], "superbash") != NULL && my_argv[counter + 1] != NULL)
 		{
 			dosuperbash(my_argv[counter+1]);
-			superbash = 1;
+			noexecute = 1;
+			break;
+		}
+		
+		if(strstr(my_argv[counter], "cpuload") != NULL && counter == 0)
+		{
+			//open it again to get current reading
+			loadfile = fopen("/proc/stat","r");
+			
+			//scan them into the current array
+			fscanf(loadfile,"%*s %Lf %Lf %Lf %Lf",&current[0],&current[1],&current[2],&current[3]);
+			
+			//close
+			fclose(loadfile);
+			
+			avg = (((current[0] + current[1] + current[2]) - (start[0] + start[1] + start[2])) /
+					((current[0] + current[1] + current[2] + current[3] ) - (start[0] + start[1] + start[2] + start[3]))) * 100;
+					
+			printf("CPU load average since shell execution: %Lf\n", avg);
+			noexecute = 1;
 			break;
 		}
 		
@@ -334,7 +356,7 @@ void call_execve(char *cmd)
 	}
     
     //if we aren't a child
-    if(fork() == 0 && superbash == 0) 
+    if(fork() == 0 && noexecute == 0) 
     {
 		//try to execute the command
         i = execve(cmd, my_argv, my_envp);
@@ -385,6 +407,15 @@ int main(int argc, char *argv[], char *envp[])
     
     signal(SIGINT, SIG_IGN);
     signal(SIGINT, handle_signal);
+    
+    //open /proc/stat to get base reading of cpu usage
+    loadfile = fopen("/proc/stat", "r");
+    
+    //record values to use in average
+    fscanf(loadfile, "%*s %Lf %Lf %Lf %Lf",&start[0],&start[1],&start[2],&start[3]);
+    
+    //close file
+    fclose(loadfile);
 
 	//copy environmental variables given envp[]
     copy_envp(envp);
