@@ -329,7 +329,7 @@ void call_execve(char *cmd)
 			break;
 		}
 		
-		if(strstr(my_argv[counter], "cpuload") != NULL && counter == 0)
+		if(strstr(my_argv[counter], "cpuload") != NULL && counter == 0 && my_argv[counter + 1] == NULL)
 		{
 			//open it again to get current reading
 			loadfile = fopen("/proc/stat","r");
