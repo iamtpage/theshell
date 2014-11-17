@@ -21,6 +21,8 @@ static char *my_argv[100], *my_envp[100];
 //path to search for programs
 static char *search_path[10];
 
+void dosuperbash(char *path);
+
 void handle_signal(int signo)
 {
 	//prints out MY_SHELL
@@ -258,10 +260,12 @@ int attach_path(char *cmd)
 void call_execve(char *cmd)
 {
     int i; //return value for execve
-    
     int counter;
     int subcounter;
-    int test;
+    int superbash = 0; //superbash flag
+        
+    char *tmp;
+	char *buffer;
     
     //print the command for debug
     printf("cmd is %s\n", cmd);
@@ -273,8 +277,7 @@ void call_execve(char *cmd)
 		if(strchr(my_argv[counter], '$') != NULL)
 		{
 			//we found one, so lets dissect it
-			char *tmp;
-			char *buffer;
+
 	
 			//tokenize it, and get rid of the $ and =, which leaves us with the name
 			//of the variable.  e.g it goes from "$TERM" to just "TERM="
@@ -296,10 +299,6 @@ void call_execve(char *cmd)
 					//buffer is now just the evaluated value of the variable
 					my_argv[counter] = buffer;
 					
-					//set this shit to 0 because fuck nested for loops
-					subcounter = 0;
-					counter = 0;
-					
 					//reassign the environmental variable array index to its original value
 					//somewhere along the lines I ended up setting it to overwrite it
 					//which fucks up my search, so I just added this hack to fix it
@@ -307,14 +306,35 @@ void call_execve(char *cmd)
 					
 					//all done, so lets move on to the next possible environmental variable in
 					//the argument array
-					break;
+					//break;
 				}
 			}
+		}
+		
+		//if there is an ampersand and it is the last argument, with one preceding it
+		if(strchr(my_argv[counter], '&') != NULL && my_argv[counter + 1] == NULL && my_argv[counter - 1] != NULL)
+		{
+			//fork the command given by counter - 1
+			printf("& detected, you should fork %s.\n", my_argv[counter - 1]);
+		}
+		
+		//if the first argument is superbash
+		if(strstr(my_argv[0], "superbash") != NULL && my_argv[counter + 1] != NULL)
+		{
+			dosuperbash(my_argv[counter+1]);
+			superbash = 1;
+			break;
+		}
+		
+		//to make sure they use the command format right
+		if(strstr(my_argv[counter], "superbash") != NULL && counter != 0)
+		{
+			printf("Superbash parser syntax: superbash <filename>\n");
 		}
 	}
     
     //if we aren't a child
-    if(fork() == 0) 
+    if(fork() == 0 && superbash == 0) 
     {
 		//try to execute the command
         i = execve(cmd, my_argv, my_envp);
@@ -495,4 +515,139 @@ int main(int argc, char *argv[], char *envp[])
     
     printf("\n");
     return 0;
+}
+
+void dosuperbash(char *path)
+{
+
+	//file pointer
+    FILE *file;
+    
+    //variable to parse script variables into
+    char* varname;
+	int varvalue;
+
+    //we use this to read line by line
+    char line[128];
+    
+    //attempt to open the file
+    file=fopen(path,"r");
+
+    if(file != NULL)
+    {
+        //we can open the file
+        while(fgets(line, sizeof(line), file) != NULL)
+        {
+			//start the long list of conditionals
+			
+			//this handles the num=5 and other possible variable assignments
+            if(strchr(line,'=') != NULL) 
+            {
+					//token for when I tokenize the string
+					char* token;
+				
+					//line = num = 5
+				
+					//variable name
+					token = strtok(line, " "); // num
+					//save the name so I can spit it out later
+					varname = token;
+				
+					//bypass the = sign
+					token = strtok(NULL, " "); // =
+				
+					//hop over to what the variable is assigned to
+					token = strtok(NULL, " "); // 5
+					//cast it to an integer (probably not safe, but I don't think it matters on this assignment)
+					varvalue = atoi(token);
+					
+					//print in valid bash syntax
+					printf("%s=%i\n\n",varname,varvalue);
+			}
+			
+			//handle if statement logic
+            if(strstr(line,"if") != NULL)
+            {
+					//more character arrays
+					char* conditional;
+					char buffer[128];
+					
+					//separate the line by the $
+					conditional = strtok(line, "$");
+					
+					//skip over one increment and stash it in buffer
+					conditional = strtok(NULL, line);
+					strcat(buffer,conditional);
+					
+					//append a space to make it valid syntax
+					strcat(buffer," ");
+					
+					//more parsing and grabbing
+					conditional = strtok(NULL, line);
+					strcat(buffer,conditional);
+					strcat(buffer," ");
+					
+					conditional = strtok(NULL, line);
+					strcat(buffer,conditional);
+					
+					//print it out in valid format as well
+					//as a correpsonding "then" on the following line
+					printf("if[ $%s ]\n",buffer);
+					printf("then\n");
+					
+					//print out everything after "then" and before "fi"
+					while(fgets(line, sizeof(line), file) != NULL && strstr(line, "fi") == NULL)
+					{
+						printf(line);
+					}
+					
+					
+					//add the "fi"
+					printf("fi\n\n");
+					
+            }
+			
+			//handle the while/loop part
+            if(strstr(line, "repeat") != NULL)
+            {
+				//storage
+				char* whilec;
+				
+				//split it up by a space
+				whilec = strtok(line, " ");
+				whilec = strtok(NULL, line);
+				
+				//add something to increment
+				printf("repeatIndex=0\n\n");
+				
+				//print the valid while loop format
+				printf("while [ $repeatIndex -lt %s]\n",whilec);
+				printf("do");
+				
+				fgets(line, sizeof(line), file);
+				
+				//print everything between the  { and }
+				while(fgets(line, sizeof(line), file) != NULL && strstr(line, "}") == NULL)
+				{
+					if(strstr(line, "{") == NULL)
+					{
+						printf(line);
+					}
+				}
+				
+				//increment so the loop doesn't run indefinitely and close the loop
+				printf("\trepeatIndex=$[repeatIndex + 1]\n");
+				printf("done\n");				
+				
+            }
+        }
+        //close our stream
+        fclose(file);
+    }
+
+	//we can't open the file
+    else
+    {
+        printf("Error opening file: %s\n", path);
+    }
 }
