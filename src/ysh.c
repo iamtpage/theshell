@@ -351,6 +351,7 @@ void call_execve(char *cmd)
 		if(strstr(my_argv[counter], "cpuload") != NULL && counter != 0)
 		{
 			printf("cpuload syntax: cpuload\n");
+		}
 		
 		//to make sure they use the command format right
 		if(strstr(my_argv[counter], "superbash") != NULL && counter != 0)
@@ -490,7 +491,7 @@ int main(int argc, char *argv[], char *envp[])
 									//else we can't find it
 									printf("%s: command not found\n", cmd);
 								}
-							} 
+							}
                        
 							//else check the current directory for the command
 							else 
@@ -528,7 +529,20 @@ int main(int argc, char *argv[], char *envp[])
 						
 						//break
 						break;
-                   
+						
+			//check for output redirection		
+			case '>':	printf("found >\n");
+						
+						//do stuff for output redirection
+						 
+						break;
+						
+			//check for input redirection
+            case '<':	printf("found <\n");
+            
+            			//do stuff for input redirection
+            
+            			break;       
 			default: strncat(tmp, &c, 1); //no return, so keep grabbing the characters
 					 break;
         }
