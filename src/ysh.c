@@ -314,6 +314,29 @@ void call_execve(char *cmd)
 			}
 		}
 		
+		
+		FILE *newfile;
+		char buff[255];
+		//check for output redirection
+		if(strchr(my_argv[counter], '>') != NULL)
+		{
+			//make sure > isn't by itself
+			if(my_argv[counter - 1] != NULL && my_argv[counter + 1] != NULL)
+			{
+				//create stream to be read into a string called buff
+				loadfile = popen(my_argv[counter - 1], "r");
+				fread(buff, 4, 10, loadfile);
+				pclose(loadfile);
+				
+				//create a file with specified name and put buff(command output) into it
+				newfile = fopen(my_argv[counter + 1], "w");
+				fwrite(buff, 4, 10, newfile);
+				fclose(newfile);
+			}
+			
+	    	noexecute = 1;
+		}
+		
 		//if there is an ampersand and it is the last argument, with one preceding it
 		if(strchr(my_argv[counter], '&') != NULL && my_argv[counter + 1] == NULL && my_argv[counter - 1] != NULL)
 		{
@@ -531,18 +554,18 @@ int main(int argc, char *argv[], char *envp[])
 						break;
 						
 			//check for output redirection		
-			case '>':	printf("found >\n");
+			///case '>':	printf("found '>'\n");
 						
 						//do stuff for output redirection
 						 
-						break;
+				//		break;
 						
 			//check for input redirection
-            case '<':	printf("found <\n");
+            //case '<':	printf("found '<'\n");
             
             			//do stuff for input redirection
             
-            			break;       
+            //			break;       
 			default: strncat(tmp, &c, 1); //no return, so keep grabbing the characters
 					 break;
         }
