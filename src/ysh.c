@@ -21,6 +21,8 @@ static char *my_argv[100], *my_envp[100];
 //path to search for programs
 static char *search_path[10];
 
+static int argcSize;
+
 FILE *loadfile;
 long double start[4], current[4], avg;
 
@@ -316,6 +318,7 @@ void call_execve(char *cmd)
 		
 		
 		FILE *newfile;
+		FILE *inputfile;
 		char buff[255];
 		//check for output redirection
 		if(strchr(my_argv[counter], '>') != NULL)
@@ -325,16 +328,40 @@ void call_execve(char *cmd)
 			{
 				//create stream to be read into a string called buff
 				loadfile = popen(my_argv[counter - 1], "r");
-				fread(buff, 4, 10, loadfile);
+				//get size of stream
+				int size = ftell(loadfile)+1;
+				//sets r to # of elements read in
+				int nullLocation = fread(buff, 1, size-1, loadfile);
+				//add null teminator to the end (fixed garbage)
+				buff[nullLocation] = '\0';
 				pclose(loadfile);
 				
 				//create a file with specified name and put buff(command output) into it
 				newfile = fopen(my_argv[counter + 1], "w");
-				fwrite(buff, 4, 10, newfile);
+				fputs(buff,newfile);
 				fclose(newfile);
 			}
 			
 	    	noexecute = 1;
+		}
+		
+		//check for input redirection
+		if(strchr(my_argv[counter], '<') != NULL)
+		{
+			if(my_argv[counter - 1] != NULL && my_argv[counter + 1] != NULL)
+			{
+				//get input file data
+				inputfile = fopen(my_argv[counter + 1], "r");
+				fwrite(buff, 4, 10, inputfile);
+				fclose(inputfile);
+				
+				//put data into the command
+				loadfile = popen(my_argv[counter - 1], "w");
+				fread(buff, 4, 3, loadfile);
+				pclose(loadfile);
+			}
+			
+			noexecute = 1;
 		}
 		
 		//if there is an ampersand and it is the last argument, with one preceding it
@@ -429,6 +456,7 @@ int main(int argc, char *argv[], char *envp[])
 {
     char c;
     int i, fd;
+    argcSize = argc;
     char *tmp = (char *)malloc(sizeof(char) * 100);
     char *path_str = (char *)malloc(sizeof(char) * 256);
     char *cmd = (char *)malloc(sizeof(char) * 100);
