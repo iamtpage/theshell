@@ -21,8 +21,6 @@ static char *my_argv[100], *my_envp[100];
 //path to search for programs
 static char *search_path[10];
 
-static int argcSize;
-
 FILE *loadfile;
 long double start[4], current[4], avg;
 
@@ -316,22 +314,23 @@ void call_execve(char *cmd)
 			}
 		}
 		
-		
+		int size, nullLocation;
 		FILE *newfile;
 		FILE *inputfile;
-		char buff[255];
+		char buff[255], buff1[255];
 		//check for output redirection
 		if(strchr(my_argv[counter], '>') != NULL)
 		{
+			
 			//make sure > isn't by itself
 			if(my_argv[counter - 1] != NULL && my_argv[counter + 1] != NULL)
 			{
 				//create stream to be read into a string called buff
 				loadfile = popen(my_argv[counter - 1], "r");
 				//get size of stream
-				int size = ftell(loadfile)+1;
-				//sets r to # of elements read in
-				int nullLocation = fread(buff, 1, size-1, loadfile);
+				size = ftell(loadfile)+1;
+				//sets nullLocation to # of elements read in
+				nullLocation = fread(buff, 1, size-1, loadfile);
 				//add null teminator to the end (fixed garbage)
 				buff[nullLocation] = '\0';
 				pclose(loadfile);
@@ -340,6 +339,9 @@ void call_execve(char *cmd)
 				newfile = fopen(my_argv[counter + 1], "w");
 				fputs(buff,newfile);
 				fclose(newfile);
+				
+				//clear out buff to prevent junk
+				memset(buff, '\0', 100);
 			}
 			
 	    	noexecute = 1;
@@ -352,13 +354,21 @@ void call_execve(char *cmd)
 			{
 				//get input file data
 				inputfile = fopen(my_argv[counter + 1], "r");
-				fwrite(buff, 4, 10, inputfile);
+				//reads in data from file
+				while(!EOF)
+				{
+					//fscanf(inputfile, "%s", buff1);
+					fgets(buff1, 255, inputfile);
+					strcat(buff, buff1);
+				}
 				fclose(inputfile);
 				
 				//put data into the command
 				loadfile = popen(my_argv[counter - 1], "w");
-				fread(buff, 4, 3, loadfile);
+				fputs(buff, loadfile);
 				pclose(loadfile);
+
+				memset(buff, '\0', 100);
 			}
 			
 			noexecute = 1;
@@ -456,7 +466,6 @@ int main(int argc, char *argv[], char *envp[])
 {
     char c;
     int i, fd;
-    argcSize = argc;
     char *tmp = (char *)malloc(sizeof(char) * 100);
     char *path_str = (char *)malloc(sizeof(char) * 256);
     char *cmd = (char *)malloc(sizeof(char) * 100);
@@ -580,20 +589,7 @@ int main(int argc, char *argv[], char *envp[])
 						
 						//break
 						break;
-						
-			//check for output redirection		
-			///case '>':	printf("found '>'\n");
-						
-						//do stuff for output redirection
-						 
-				//		break;
-						
-			//check for input redirection
-            //case '<':	printf("found '<'\n");
-            
-            			//do stuff for input redirection
-            
-            //			break;       
+                   
 			default: strncat(tmp, &c, 1); //no return, so keep grabbing the characters
 					 break;
         }
