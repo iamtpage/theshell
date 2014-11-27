@@ -379,6 +379,47 @@ void call_execve(char *cmd)
 		{
 			//fork the command given by counter - 1
 			printf("& detected, you should fork %s.\n", my_argv[counter - 1]);
+			
+			pid_t child_pid;
+			int status;
+			int jb = 0;
+
+			child_pid = fork();
+
+			/* starting fork */
+			if (child_pid >= 0)
+			{
+				 /* the child process*/
+    				if (child_pid == 0)
+    				{
+    					// Increment the job.(jb)
+    					//Use as label for job
+    					jb++;
+    					
+    					//prcesses of child, will use for organizing process groups.
+    					//printf("child PID =  %d, parent pid = %d\n", getpid(), getppid());
+    					
+    					printf("\n[%d]\n",jb);
+    					//execvp(*my_argv, my_argv);
+    				}
+    				/* parent process */
+    				else
+    				{
+    				//parent processes
+    				//printf("parent PID =  %d, child pid = %d\n", getpid(), child_pid);
+    				wait(&status);
+    				
+    				// printf("child status: %d\n", WEXITSTATUS(status));
+    				//printf("\n Parent'z local = %d, parent's  global = %d\n",local);
+    				}
+				
+			}  
+			/*fails to fork*/
+			 else
+    			{
+			 perror("fork");
+			 exit(0);
+    			}
 		}
 		
 		//if the first argument is superbash
