@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <pwd.h>
 
 extern int errno;
 
@@ -25,6 +26,7 @@ FILE *loadfile;
 long double start[4], current[4], avg;
 
 void dosuperbash(char *path);
+void dowhoami();
 
 void handle_signal(int signo)
 {
@@ -374,6 +376,18 @@ void call_execve(char *cmd)
 			noexecute = 1;
 		}
 		
+		if(strstr(my_argv[counter], "mywhoami") != NULL && counter == 0)
+		{
+			dowhoami();
+			noexecute = 1;
+		}
+		
+		if(strstr(my_argv[counter], "mywhoami") != NULL && counter != 0)
+		{
+			printf("format for command is 'mywhoami'\n");
+			noexecute = 1;
+		}
+		
 		//if there is an ampersand and it is the last argument, with one preceding it
 		if(strchr(my_argv[counter], '&') != NULL && my_argv[counter + 1] == NULL && my_argv[counter - 1] != NULL)
 		{
@@ -425,8 +439,13 @@ void call_execve(char *cmd)
 		//if the first argument is superbash
 		if(strstr(my_argv[0], "superbash") != NULL && my_argv[counter + 1] != NULL)
 		{
+			//send the file path to the dosuperbash function
 			dosuperbash(my_argv[counter+1]);
+			
+			//don't try to execute the command
 			noexecute = 1;
+			
+			//its a parser, so break
 			break;
 		}
 		
@@ -441,22 +460,28 @@ void call_execve(char *cmd)
 			//close
 			fclose(loadfile);
 			
+			//find the average (current + start / current - start) * 100
 			avg = (((current[0] + current[1] + current[2]) - (start[0] + start[1] + start[2])) /
 					((current[0] + current[1] + current[2] + current[3] ) - (start[0] + start[1] + start[2] + start[3]))) * 100;
 					
+			//print it
 			printf("CPU load average since shell execution: %Lf\n", avg);
+			
+			//dont execute it and break
 			noexecute = 1;
 			break;
 		}
 		
 		if(strstr(my_argv[counter], "cpuload") != NULL && counter != 0)
 		{
+			//syntax error handling
 			printf("cpuload syntax: cpuload\n");
 		}
 		
 		//to make sure they use the command format right
 		if(strstr(my_argv[counter], "superbash") != NULL && counter != 0)
 		{
+			//superbash error handling
 			printf("Superbash parser syntax: superbash <filename>\n");
 		}
 	}
@@ -503,6 +528,7 @@ void free_argv()
     }
 }
 
+//main function
 int main(int argc, char *argv[], char *envp[])
 {
     char c;
@@ -654,9 +680,9 @@ int main(int argc, char *argv[], char *envp[])
     return 0;
 }
 
+//superbash implementation
 void dosuperbash(char *path)
 {
-
 	//file pointer
     FILE *file;
     
@@ -787,4 +813,20 @@ void dosuperbash(char *path)
     {
         printf("Error opening file: %s\n", path);
     }
+}
+
+//mywhoami function
+void dowhoami()
+{
+	
+	//passwd struct pointer
+	struct passwd *user;
+	
+	//get the effective id using the userid
+	user = getpwuid(geteuid());
+	
+	//print it out
+	//user is a pointer to a struct
+	//so the name is actually in user->pw_name
+	printf("You're logged in as \"%s\".\n", user->pw_name);
 }
