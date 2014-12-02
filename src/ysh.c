@@ -51,8 +51,9 @@ void fill_argv(char *tmp_argv)
     memset(ret, '\0', sizeof(ret));
     
     //while we don't have a string terminator
+    //take the tmp_argv and examine it character by character
     while(*arg != '\0') 
-    { //take the tmp_argv and examine it character by character
+    { 
         
         //looks like we only support 10 arguments
         if(index == 10)
@@ -97,9 +98,7 @@ void fill_argv(char *tmp_argv)
         }
         
         //increment to the next argument
-        arg++;
-        
-        //printf("arg is %c\n", *arg);
+        arg++;       
     }
     
     //set the arg index to the size it needs to be
@@ -125,7 +124,10 @@ void copy_envp(char **envp)
 		//with the proper memory allocated to hold the envp[index] + 1
         my_envp[index] = (char *) malloc(sizeof(char) * (strlen(envp[index]) + 2));
         
+        //add a $ before each variabel name
+        //PATH becomes $PATH
         strcat(my_envp[index], "$");
+        
         //copy from envp to my_envp
         memcpy(my_envp[index], envp[index], strlen(envp[index]));
     }
@@ -273,7 +275,7 @@ void call_execve(char *cmd)
 	char *buffer;
     
     //print the command for debug
-    printf("cmd is %s\n", cmd);
+    //printf("cmd is %s\n", cmd);
     
     //increment through the arguments provided by a user
     for(counter = 0; my_argv[counter] != NULL; counter++)
@@ -316,10 +318,13 @@ void call_execve(char *cmd)
 			}
 		}
 		
+		
+		//file I/O redirection stuff
 		int size, nullLocation;
 		FILE *newfile;
 		FILE *inputfile;
 		char buff[255], buff1[255];
+		
 		//check for output redirection
 		if(strchr(my_argv[counter], '>') != NULL)
 		{
@@ -345,7 +350,7 @@ void call_execve(char *cmd)
 				//clear out buff to prevent junk
 				memset(buff, '\0', 100);
 			}
-			
+			//don't execute
 	    	noexecute = 1;
 		}
 		
@@ -376,12 +381,15 @@ void call_execve(char *cmd)
 			noexecute = 1;
 		}
 		
+		//our UNIX utility we chose is 'whoami'
+		//so we made our own called 'mywhoami'
 		if(strstr(my_argv[counter], "mywhoami") != NULL && counter == 0)
 		{
 			dowhoami();
 			noexecute = 1;
 		}
 		
+		//syntax checking for it
 		if(strstr(my_argv[counter], "mywhoami") != NULL && counter != 0)
 		{
 			printf("format for command is 'mywhoami'\n");
@@ -430,10 +438,10 @@ void call_execve(char *cmd)
 			}  
 			/*fails to fork*/
 			 else
-    			{
-			 perror("fork");
-			 exit(0);
-    			}
+    		{
+				perror("fork");
+				exit(0);
+    		}
 		}
 		
 		//if the first argument is superbash
