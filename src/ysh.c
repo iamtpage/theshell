@@ -361,14 +361,13 @@ void call_execve(char *cmd)
 			{
 				//get input file data
 				inputfile = fopen(my_argv[counter + 1], "r");
-				//reads in data from file
-				while(!EOF)
+				//reads in data from file line by line until end of file
+				while(fgets(buff1, 255, inputfile) != NULL)
 				{
-					//fscanf(inputfile, "%s", buff1);
-					fgets(buff1, 255, inputfile);
 					strcat(buff, buff1);
 				}
 				fclose(inputfile);
+				memset(buff1, '\0', 100);
 				
 				//put data into the command
 				loadfile = popen(my_argv[counter - 1], "w");
