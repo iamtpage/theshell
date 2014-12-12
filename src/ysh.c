@@ -399,48 +399,31 @@ void call_execve(char *cmd)
 		if(strchr(my_argv[counter], '&') != NULL && my_argv[counter + 1] == NULL && my_argv[counter - 1] != NULL)
 		{
 			//fork the command given by counter - 1
-			printf("& detected, you should fork %s.\n", my_argv[counter - 1]);
-		
-			make_background_job();
-			void make_background_job()
-			{
-				static char user_input = '\0'; 
-
-				static char *cmd_argv[5]; // array of strings of command
-				static int cmd_argc = 0; // # words of command
-
-				static char buffer[50]; // input line buffer
-				static int buffer_characters = 0;
-				int jobs_list_size = 0;
-
-				/* int pid; */
-				int status;
-				int jobs_list[50]; 
-
-   				int pid;
-    				pid = fork();
-
-				 if ( ! pid)
-    				{
-      					fclose(stdin); // close child's stdin
-					 fopen("/dev/null", "r"); // open a new stdin that is always empty
-
-      					fprintf(stderr, "Child Job pid = %d\n", getpid());
-
-					 //add pid to jobs list
-      					jobs_list[jobs_list_size] = getpid();
-  					/*     printf("jobs list %d", *jobs_list[jobs_list_size]);         */
-					 jobs_list_size++;
-
-					 execvp(*cmd_argv,cmd_argv);
-
-    			// this should never be reached, unless there is an error
-			  fprintf (stderr, "unknown command: %s\n", cmd_argv[0]);     
-      			exit(1);
-    			}
-
-    			waitpid(pid, &status, 0);
-
+			//printf("& detected, you should fork %s.\n", my_argv[counter - 1]);
+		 pid_t process;
+                 process = fork();
+                 int jb=0;
+                 int status;
+                 if(process< 0)
+                 {
+                 printf("fork failed");
+                 }
+                 if(process > 0)
+                 {
+                 //parent process
+                 wait(&status);
+                 }
+    
+                 if(process == 0)
+                {//child process
+                 //when & is read, forks, and job counter ++
+                 //forks counter-1
+                 jb++;
+                 printf("\n[%d]\n", jb);
+                 // printf("\nChild Process Executed");
+                 printf("%s\n", my_argv[counter-1]);
+                 }
+                 return 0 ;
 		}
 		
 		//if the first argument is superbash
